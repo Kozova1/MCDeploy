@@ -137,6 +137,26 @@ suspend fun main(args: Array<String>) {
         exitProcess(2)
     }
 
+    // make sure directory exists
+    runCatching {
+        Path("./datapacks").createDirectories()
+    }
+    println("Starting to download datapacks...")
+    config.Datapacks?.forEach { datapack ->
+        println("Starting download from ${datapack.URL}")
+        val bytes = datapack.fetch(client)
+        logOk("Downloaded!")
+        val hashed = hash(bytes)
+        if (datapack.Sha1Sum == hashed) {
+            logOk("SHA-1 Match! ${datapack.Sha1Sum}")
+        } else {
+            logErr("SHA-1 Mismatch! Expected ${datapack.Sha1Sum} but got $hashed")
+            exitProcess(2)
+        }
+        File("datapacks${File.separator}${datapack.FileName}").overwrite(bytes)
+    }
+    logOk("Downloaded all datapacks")
+
     File("./server.jar").overwrite(serverJar)
     logOk("Written server.jar")
 
