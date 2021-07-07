@@ -10,13 +10,28 @@ import io.ktor.client.statement.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.lang.StringBuilder
 import java.nio.charset.Charset
 import java.security.MessageDigest
 import kotlin.io.path.*
 import kotlin.system.exitProcess
 
 fun writeEula() = File("./eula.txt").writeText("eula = true\n", Charsets.UTF_8)
+
+fun File.writeNewBytes(bytes: ByteArray) {
+    if (exists()) {
+        logErr("File $this already exists.")
+        exitProcess(1)
+    }
+    writeBytes(bytes)
+}
+
+fun File.writeNewText(text: String, charset: Charset) {
+    if (exists()) {
+        logErr("File $this already exists.")
+        exitProcess(1)
+    }
+    writeText(text, charset)
+}
 
 fun logErr(msg: String) {
     val colorReset = "\u001B[0m"
@@ -151,23 +166,23 @@ suspend fun main(args: Array<String>) {
             println("Downloaded: $hashed")
             println("Configured: ${datapack.Sha1Sum}")
             assertHashesMatch(datapack.Sha1Sum, hashed)
-            Path("world", "datapacks", datapack.FileName).toFile().writeBytes(bytes)
+            Path("world", "datapacks", datapack.FileName).toFile().writeNewBytes(bytes)
             println("[${idx + 1}/$numDatapacks] Done.")
             println()
         }
         logOk("Downloaded all datapacks")
     }
 
-    File("./server.jar").writeBytes(serverJar)
+    File("./server.jar").writeNewBytes(serverJar)
     logOk("Written server.jar")
 
     writeEula()
     logOk("Written EULA.txt")
 
-    File("./run.sh").writeText(config.genRunScript(), Charsets.UTF_8)
+    File("./run.sh").writeNewText(config.genRunScript(), Charsets.UTF_8)
     logOk("Written run.sh")
 
-    File("./server.properties").writeText(config.genServerProperties(), Charsets.UTF_8)
+    File("./server.properties").writeNewText(config.genServerProperties(), Charsets.UTF_8)
     logOk("written server.properties")
 
     logOk("Done! Please run the server now.")
