@@ -13,25 +13,10 @@ import java.io.File
 import java.lang.StringBuilder
 import java.nio.charset.Charset
 import java.security.MessageDigest
-import kotlin.io.path.Path
-import kotlin.io.path.createDirectories
+import kotlin.io.path.*
 import kotlin.system.exitProcess
 
-fun writeEula() = File("./eula.txt").overwrite("eula = true\n", Charsets.UTF_8)
-
-fun File.overwrite(content: String, charset: Charset) {
-    if (exists()) {
-        delete()
-    }
-    writeText(content, charset)
-}
-
-fun File.overwrite(content: ByteArray) {
-    if (exists()) {
-        delete()
-    }
-    writeBytes(content)
-}
+fun writeEula() = File("./eula.txt").writeText("eula = true\n", Charsets.UTF_8)
 
 fun logErr(msg: String) {
     val colorReset = "\u001B[0m"
@@ -55,20 +40,33 @@ fun hash(bytes: ByteArray): String {
     return sb.toString()
 }
 
+fun assertHashesMatch(expected: String, actual: String) {
+    if (expected == actual) {
+        logOk("SHA-1 Match! Continuing")
+    } else {
+        logErr("SHA-1 Mismatch! Exiting")
+        exitProcess(2)
+    }
+}
+
 suspend fun main(args: Array<String>) {
     if (args.isNotEmpty()) {
         if (args[0] == "-h" || args[0] == "--help" || args[0] == "-help" || args[0] == "help") {
             println(HELP)
             return
         } else if (args.size >= 2 && args[0] == "new") {
+            if (Path(args[1]).exists()) {
+                logErr("Directory ${args[1]} already exists")
+                exitProcess(1)
+            }
             runCatching {
-                Path(args[1]).createDirectories()
-                File(args[1] + File.separator + "mcdeploy.toml").createNewFile()
+                Path(args[1]).createDirectory()
+                Path(args[1], "mcdeploy.toml").createFile()
             }
             logOk("Server template created!")
             return
         } else if (args[0] != "deploy") {
-            logErr("Unknown command '${args[0]}'")
+            logErr("Unknown command '${args[0]}'. Run 'MCDeploy help' to learn how to use this tool")
             exitProcess(1)
         }
     }
@@ -111,6 +109,9 @@ suspend fun main(args: Array<String>) {
         logErr("No such version exists!")
         exitProcess(1)
     }
+
+    println("")
+
     val responseManifest: HttpResponse = client.get(versionUrl)
     val manifest: VersionManifest = Json { ignoreUnknownKeys = true }.decodeFromString(responseManifest.receive())
     logOk("Received manifest for version ${config.Server.Version}")
@@ -130,43 +131,43 @@ suspend fun main(args: Array<String>) {
     val serverJarHash = hash(serverJar)
     println("Downloaded: $serverJarHash")
     println("Manifest:   ${manifest.downloads.server.sha1}")
-    if (serverJarHash == manifest.downloads.server.sha1) {
-        logOk("SHA-1 Match! Continuing")
-    } else {
-        logErr("SHA-1 Mismatch! Exiting")
-        exitProcess(2)
-    }
+    assertHashesMatch(manifest.downloads.server.sha1, serverJarHash)
 
-    // make sure directory exists
-    runCatching {
-        Path("./datapacks").createDirectories()
-    }
-    println("Starting to download datapacks...")
-    config.Datapacks?.forEach { datapack ->
-        println("Starting download from ${datapack.URL}")
-        val bytes = datapack.fetch(client)
-        logOk("Downloaded!")
-        val hashed = hash(bytes)
-        if (datapack.Sha1Sum == hashed) {
-            logOk("SHA-1 Match! ${datapack.Sha1Sum}")
-        } else {
-            logErr("SHA-1 Mismatch! Expected ${datapack.Sha1Sum} but got $hashed")
-            exitProcess(2)
+
+    if (config.Datapacks != null) {
+        val numDatapacks = config.Datapacks.size
+        // make sure directory exists
+        runCatching {
+            Path("world", "datapacks").createDirectories()
         }
-        File("datapacks${File.separator}${datapack.FileName}").overwrite(bytes)
+        println("Starting datapack downloads ($numDatapacks)...")
+        println()
+        config.Datapacks.forEachIndexed { idx, datapack ->
+            println("[${idx + 1}/$numDatapacks] Starting download from ${datapack.URL}")
+            val bytes = datapack.fetch(client)
+            logOk("Downloaded ${datapack.FileName}")
+            println("Verifying ${datapack.FileName}")
+            val hashed = hash(bytes)
+            println("Downloaded: $hashed")
+            println("Configured: ${datapack.Sha1Sum}")
+            assertHashesMatch(datapack.Sha1Sum, hashed)
+            Path("world", "datapacks", datapack.FileName).toFile().writeBytes(bytes)
+            println("[${idx + 1}/$numDatapacks] Done.")
+            println()
+        }
+        logOk("Downloaded all datapacks")
     }
-    logOk("Downloaded all datapacks")
 
-    File("./server.jar").overwrite(serverJar)
+    File("./server.jar").writeBytes(serverJar)
     logOk("Written server.jar")
 
     writeEula()
     logOk("Written EULA.txt")
 
-    File("./run.sh").overwrite(config.genRunScript(), Charsets.UTF_8)
+    File("./run.sh").writeText(config.genRunScript(), Charsets.UTF_8)
     logOk("Written run.sh")
 
-    File("./server.properties").overwrite(config.genServerProperties(), Charsets.UTF_8)
+    File("./server.properties").writeText(config.genServerProperties(), Charsets.UTF_8)
     logOk("written server.properties")
 
     logOk("Done! Please run the server now.")
