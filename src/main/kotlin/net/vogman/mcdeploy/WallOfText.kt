@@ -97,6 +97,23 @@ CONFIG
             EXAMPLE: PreLaunchCommands = [ "echo Server Stopped", "echo closing...", "exit" ]
             DEFAULT: PreLaunchCommands = [ "echo Server Stopped" ]            
         
+        [[Datapacks]]
+        This section contains a list of datapacks, each of which has the following properties:
+        NOTE: if your datapack is a zip within a zip, you'll have to extract it manually.
+        NOTE: These have no default values - you *must* supply all of them for every datapack.
+        URL - A string containing the URL from which to download the datapack
+            EXAMPLE: URL = "https://example.com/datapacks/datapack.zip"
+        Sha1Sum - A string containing the SHA-1 hash of the datapack file
+            EXAMPLE: Sha1Sum = "648a6a6ffffdaa0badb23b8baf90b6168dd16b3a"
+        FileName - A string containing the file name under which the datapack will be saved, relative to ./world/datapacks/
+            EXAMPLE: FileName = "ChocolateEdits.zip"
+        EXAMPLE:
+            [[Datapacks]]
+            URL = "https://example.com/datapacks/datapack.zip"
+            Sha1Sum = "648a6a6ffffdaa0badb23b8baf90b6168dd16b3a"
+            FileName = "ChocolateEdits.zip"
+        
+        
         [Properties]
         This section contains the contents of server.properties.
         All property names and values must be enclosed by double quotes ("), see EXAMPLE section.
