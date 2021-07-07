@@ -34,15 +34,15 @@ fun File.overwrite(content: ByteArray) {
 }
 
 fun logErr(msg: String) {
-    val color_reset = "\u001B[0m"
-    val color_red = "\u001B[31m"
-    println("[${color_red}X${color_reset}] $msg")
+    val colorReset = "\u001B[0m"
+    val colorRed = "\u001B[31m"
+    println("[${colorRed}X${colorReset}] $msg")
 }
 
 fun logOk(msg: String) {
-    val color_reset = "\u001B[0m"
-    val color_green = "\u001B[32m"
-    println("[${color_green}✓${color_reset}] $msg")
+    val colorReset = "\u001B[0m"
+    val colorGreen = "\u001B[32m"
+    println("[${colorGreen}✓${colorReset}] $msg")
 }
 
 fun hash(bytes: ByteArray): String {
