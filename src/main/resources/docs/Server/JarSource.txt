@@ -1,0 +1,12 @@
+This section configures where the server.jar will be sourced from.
+It uses Fetchers, which are different modules that obtain server.jar in different ways.
+If you only wish to host a vanilla server, without using any modifications to the server.jar itself,
+you probably want to use LauncherManifest as your Fetcher.
+
+There are 3 available Fetchers:
+LauncherManifest - Uses the official Minecraft server.jar. See @Server.JarSource.Fetcher
+DownloadURL - Downloads a file from the internet as a server.jar, and verifies it. See @Server.JarSource.Fetcher
+CopyFile - Copies server.jar from another location on your computer. See @Server.JarSource.Fetcher
+
+Children:
+  Server.JarSource.Fetcher

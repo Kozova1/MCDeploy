@@ -1,0 +1,29 @@
+Fetcher
+Fetcher: String, any of "LauncherManifest", "DownloadURL", "CopyFile"
+
+Decides which Fetcher will be used for the server.
+Only one Fetcher can be enabled at a time - trying to enable multiple ones at the same time will cause errors!
+The different Fetchers are explained in @Server.JarSource
+The fetcher's configuration is to be merged with the @Server.JarSource value, like this:
+
+    [Server.JarSource]
+    Fetcher = "LauncherManifest"
+    Version = "1.6.4" # This is the LauncherManifest.Version parameter
+
+LauncherManifest Options:
+Fetcher: String - Must be "LauncherManifest"
+Version: String - Which version of the server to download.
+                  Can be either a version, or the special values "latest-release" or "latest-snapshot".
+                  By default it is set to "latest-release"
+LauncherManifestURL: URL - URL to the launcher manifest.
+                           DO NOT CHANGE THIS UNLESS YOU ARE ABSOLUTELY SURE ABOUT WHAT YOU ARE DOING!
+
+
+DownloadURL Options:
+Fetcher: String - Must be "DownloadURL"
+ServerJarURL: URL - Where to download server.jar from.
+Sha1Sum: String - SHA-1 sum of the server.jar, used to validate the download.
+
+CopyFile Options:
+Fetcher: String - Must be "CopyFile"
+CopyFrom: File - Path to server.jar to use as this server's server.jar

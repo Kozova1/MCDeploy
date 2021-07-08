@@ -7,7 +7,7 @@ import kotlin.io.path.createFile
 object NewTemplate : Command {
     override suspend fun run(args: Array<String>): Result<Unit, Error> {
         if (args.size != 1) {
-            logErr("'new' subcommand accepts exactly one argument")
+            logErr("'new' subcommand accepts exactly one argument. Use the 'help' subcommand to see usage.")
             return Result.Err(Error.User)
         }
 

@@ -1,5 +1,6 @@
 package net.vogman.mcdeploy
 
+// TODO: Make sure this is not stale
 const val DEFAULT_CONFIG: String = """[Server]
 AgreeToEULA = false
 
@@ -10,8 +11,8 @@ Version = "latest-release"
 
 [Environment]
 JavaArgs = []
-PreLaunchCommands = [ "echo Server Starting..." ]
-PostExitCommands = [ "echo Server Stopped" ]
+PreLaunchCommands.txt = [ "echo Server Starting..." ]
+PostExitCommands.txt = [ "echo Server Stopped" ]
 
 [Properties]
 "spawn-protection"="16"
@@ -65,6 +66,7 @@ PostExitCommands = [ "echo Server Stopped" ]
 "motd"="A Minecraft Server"
 """
 
+// TODO: Update help
 const val HELP: String = """USAGE
     java -jar MCDeploy.jar [help | deploy | update | new DIRECTORY]
 
@@ -134,12 +136,12 @@ CONFIG
         JavaArgs - List of strings that contains arguments passed to java -jar when running server.jar
             EXAMPLE: JavaArgs = [ "-Xmx4G", "-Xms2G" ]
             DEFAULT: JavaArgs = []
-        PreLaunchCommands - List of strings that contains shell commands that will run before server.jar starts
-            EXAMPLE: PreLaunchCommands = [ "echo Hello World", "echo Server Starting..." ]
-            DEFAULT: PreLaunchCommands = [ "echo Server Starting..." ]
+        PreLaunchCommands.txt - List of strings that contains shell commands that will run before server.jar starts
+            EXAMPLE: PreLaunchCommands.txt = [ "echo Hello World", "echo Server Starting..." ]
+            DEFAULT: PreLaunchCommands.txt = [ "echo Server Starting..." ]
         PostLaunchCommands - List of strings that contain shell commands that will run after server.jar stops
-            EXAMPLE: PreLaunchCommands = [ "echo Server Stopped", "echo closing...", "exit" ]
-            DEFAULT: PreLaunchCommands = [ "echo Server Stopped" ]            
+            EXAMPLE: PreLaunchCommands.txt = [ "echo Server Stopped", "echo closing...", "exit" ]
+            DEFAULT: PreLaunchCommands.txt = [ "echo Server Stopped" ]            
 
         [[Datapacks]]
         This section contains a list of datapacks, each of which has the following properties:

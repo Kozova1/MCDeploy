@@ -1,0 +1,7 @@
+This section configures whether you do or do not agree to the Minecraft EULA,
+As well as the source of the server.jar that you will be using.
+Due to that, it is also the place to configure the version of Minecraft you will be using for the server.
+
+Children:
+  Server.AgreeToEULA
+  Server.JarSource

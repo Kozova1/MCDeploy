@@ -1,0 +1,6 @@
+AgreeToEULA
+Type: Boolean
+
+Whether or not you agree to the Minecraft EULA,
+which is available here: https://account.mojang.com/documents/minecraft_eula
+You *must* set this to true explicitly for the server to deploy.

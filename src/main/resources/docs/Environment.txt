@@ -1,0 +1,7 @@
+This section configures some options that are not related to the Minecraft server itself,
+but to the surrounding environment. It allows setting java launch arguments, pre launch commands, and post exit commands.
+
+Children:
+  Environment.JavaArgs
+  Environment.PreLaunchCommands
+  Environment.PostExitCommands

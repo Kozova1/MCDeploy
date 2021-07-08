@@ -12,6 +12,7 @@ suspend fun main(args: Array<String>) {
         "deploy" -> DeployServer
         "update" -> UpdateServer
         "help" -> HelpPrinter
+        "describe" -> ConfigHelper
         else -> ErrorOut("Unknown subcommand '${args.first()}'. For usage, run with the 'help' subcommand", Error.User)
     }
 

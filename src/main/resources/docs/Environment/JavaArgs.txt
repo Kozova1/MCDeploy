@@ -1,0 +1,5 @@
+JavaArgs
+Type: List<String>
+
+Arguments passed to java command that launches the Minecraft server.
+Examples include '-Xmx4G' (set maximum memory to 4 GB).

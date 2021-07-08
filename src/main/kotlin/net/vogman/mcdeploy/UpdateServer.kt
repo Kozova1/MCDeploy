@@ -14,7 +14,7 @@ import kotlin.io.path.createDirectory
 object UpdateServer : Command {
     override suspend fun run(args: Array<String>): Result<Unit, Error> {
         if (args.isNotEmpty()) {
-            logErr("'update' subcommand accepts exactly zero arguments")
+            logErr("'update' subcommand accepts exactly zero arguments. Use the 'help' subcommand to see usage.")
             return Result.Err(Error.User)
         }
 
