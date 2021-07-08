@@ -17,24 +17,13 @@ tasks.withType<KotlinCompile>() {
     kotlinOptions.jvmTarget = "1.8"
 }
 
-//tasks.withType<Jar> {
-//    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-//
-//    manifest {
-//        attributes["Main-Class"] = "MainKt"
-//    }
-//
-//    from(sourceSets.main.get().output)
-//
-//    dependsOn(configurations.runtimeClasspath)
-//    from({
-//        configurations.runtimeClasspath.get().filter {
-//            it.name.endsWith("jar")
-//        }.map {
-//            zipTree(it)
-//        }
-//    })
-//}
+dependencies {
+    testImplementation(kotlin("test"))
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
 
 sourceSets.main {
     java.srcDirs("src/main/kotlin")

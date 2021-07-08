@@ -5,7 +5,7 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.createFile
 
 object NewTemplate : Command {
-    override suspend fun run(args: Array<String>): Result {
+    override suspend fun run(args: Array<String>): Result<Unit, Error> {
         if (args.size != 1) {
             logErr("'new' subcommand accepts exactly one argument")
             return Result.Err(Error.User)
@@ -21,6 +21,6 @@ object NewTemplate : Command {
             return Result.Err(Error.User)
         }
         logOk("Server template created in $target!")
-        return Result.Ok
+        return Result.Ok(Unit)
     }
 }

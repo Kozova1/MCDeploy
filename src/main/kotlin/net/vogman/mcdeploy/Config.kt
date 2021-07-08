@@ -4,9 +4,8 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import java.net.URI
+import java.io.File
 import java.net.URL
-import java.nio.file.Path
 
 data class EnvironmentConfig(
     val JavaArgs: List<String>,
@@ -14,7 +13,26 @@ data class EnvironmentConfig(
     val PostExitCommands: List<String>
 )
 
-data class ServerConfig(val JsonManifestUrl: String, val Version: String, val AgreeToEULA: Boolean)
+sealed class ServerJarFetcher : Fetcher {
+    enum class LauncherManifestFetcher { LauncherManifest }
+    data class LauncherManifest(val Fetcher: LauncherManifestFetcher, val Version: String, val LauncherManifestURL: URL) : ServerJarFetcher() {
+        override suspend fun fetch(config: Config): Result<ByteArray, Error> = fetchImpl(config)
+    }
+    enum class DownloadURLFetcher { DownloadURL }
+    data class DownloadURL(val Fetcher: DownloadURLFetcher, val ServerJarURL: URL, val Sha1Sum: String) : ServerJarFetcher() {
+        override suspend fun fetch(config: Config): Result<ByteArray, Error> = fetchImpl(config)
+    }
+
+    enum class CopyFileFetcher { CopyFile }
+    data class CopyFile(val Fetcher: CopyFileFetcher, val CopyFrom: File) : ServerJarFetcher() {
+        override suspend fun fetch(config: Config): Result<ByteArray, Error> = fetchImpl(config)
+    }
+}
+
+data class ServerConfig(
+    val JarSource: ServerJarFetcher,
+    val AgreeToEULA: Boolean,
+)
 
 data class Datapack(val URL: URL, val FileName: String, val Sha1Sum: String) {
     suspend fun fetch(client: HttpClient): ByteArray {
@@ -24,8 +42,8 @@ data class Datapack(val URL: URL, val FileName: String, val Sha1Sum: String) {
 }
 
 data class Config(
-    val Environment: EnvironmentConfig,
     val Server: ServerConfig,
+    val Environment: EnvironmentConfig,
     val Datapacks: List<Datapack>?,
     val Properties: Map<String, String>
 ) {

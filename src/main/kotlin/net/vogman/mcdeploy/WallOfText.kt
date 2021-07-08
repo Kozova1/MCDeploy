@@ -1,9 +1,12 @@
 package net.vogman.mcdeploy
 
 const val DEFAULT_CONFIG: String = """[Server]
-JsonManifestUrl = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
-Version = "latest-release"
 AgreeToEULA = false
+
+[Server.JarSource]
+Fetcher = "LauncherManifest"
+LauncherManifestURL = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+Version = "latest-release"
 
 [Environment]
 JavaArgs = []
@@ -81,15 +84,52 @@ CONFIG
     Uses the TOML format (https://github.com/toml-lang/toml)
     SECTIONS
         [Server]
-        Version - String that contains the version of the server.jar to download.
-                Can be either a version, latest-release, or latest-snapshot
-            EXAMPLE: Version = "1.17.1"
-            DEFAULT: Version = "latest-release"
-        JsonManifestUrl - String that contains the URL to the minecraft launcher manifest.
-                        DO NOT MESS WITH THIS IF YOU DON'T KNOW WHAT YOU'RE DOING
-            EXAMPLE: JsonManifestUrl = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
-            DEFAULT: JsonManifestUrl = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
-       
+        AgreeToEULA - Boolean (true | false) that signifies whether you agree with the Minecraft EULA
+
+        [Server.JarSource]
+        The way that your server will get its server.jar file
+        Fetcher - Either of "LauncherManifest", "DownloadURL", "CopyFile"
+
+        JarSource: LauncherManifest
+            Downloads the server.jar from Mojang servers
+            This is probably what you want, unless you want to use a custom server.jar
+            LauncherManifestURL - DO NOT MESS WITH THIS UNLESS YOU'RE SURE WHAT IT DOES
+                DEFAULT: LauncherManifestURL = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+            Version - The version of minecraft which to download.
+                Can be any version, or "latest-release" or "latest-snapshot"
+                DEFAULT: Version = "latest-release"
+        EXAMPLE:
+            [Server]
+            AgreeToEULA = true
+
+            [Server.JarSource]
+            Fetcher = "LauncherManifest"
+            Version = "1.17.1"
+
+        JarSource: CopyFile
+            Copies server.jar from your own PC
+            CopyFrom - Path from which to copy the server.jar
+        EXAMPLE:
+            [Server]
+            AgreeToEULA = true
+
+            [Server.JarSource]
+            Fetcher = "CopyFile"
+            CopyFrom = "~/Downloads/spigotmc.jar"
+
+        JarSource: DownloadURL
+            Downloads the server.jar from the internet
+            ServerJarURL - URL from which to download the server.jar
+            Sha1Sum - A string containing the SHA-1 hash of the server.jar file
+        EXAMPLE:
+            [Server]
+            AgreeToEULA = true
+
+            [Server.JarSource]
+            Fetcher = "DownloadURL"
+            ServerJarURL = "https://github.com/blah/blah/asdas/spigot.jar"
+            Sha1Sum = "389e19f5481e921c47a9cfeb6b3e645e54e49cc6"
+
         [Environment]
         JavaArgs - List of strings that contains arguments passed to java -jar when running server.jar
             EXAMPLE: JavaArgs = [ "-Xmx4G", "-Xms2G" ]
@@ -100,12 +140,12 @@ CONFIG
         PostLaunchCommands - List of strings that contain shell commands that will run after server.jar stops
             EXAMPLE: PreLaunchCommands = [ "echo Server Stopped", "echo closing...", "exit" ]
             DEFAULT: PreLaunchCommands = [ "echo Server Stopped" ]            
-        
+
         [[Datapacks]]
         This section contains a list of datapacks, each of which has the following properties:
         NOTE: if your datapack is a zip within a zip, you'll have to extract it manually.
         NOTE: These have no default values - you *must* supply all of them for every datapack.
-        URL - A string containing the URL from which to download the datapack
+        URL - URL from which to download the datapack
             EXAMPLE: URL = "https://example.com/datapacks/datapack.zip"
         Sha1Sum - A string containing the SHA-1 hash of the datapack file
             EXAMPLE: Sha1Sum = "648a6a6ffffdaa0badb23b8baf90b6168dd16b3a"
@@ -116,8 +156,8 @@ CONFIG
             URL = "https://example.com/datapacks/datapack.zip"
             Sha1Sum = "648a6a6ffffdaa0badb23b8baf90b6168dd16b3a"
             FileName = "ChocolateEdits.zip"
-        
-        
+
+
         [Properties]
         This section contains the contents of server.properties.
         All property names and values must be enclosed by double quotes ("), see EXAMPLE section.
