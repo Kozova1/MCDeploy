@@ -63,26 +63,30 @@ PostExitCommands = [ "echo Server Stopped" ]
 """
 
 const val HELP: String = """USAGE
-    java -jar MCDeploy.jar [new DIRECTORY | help | deploy]
+    java -jar MCDeploy.jar [help | deploy | update | new DIRECTORY]
 
 COMMANDS
-    new:
-        Create the template project in DIRECTORY
     help:
-        Display this screen
+        Display this screen.
+    new:
+        Create the template project in DIRECTORY. The directory must either not exist or be empty.
     deploy:
         Deploy the configuration specified in ./mcdeploy.toml
+    update:
+        Update the deployed server in the current directory according to the configuration in ./mcdeploy.toml
+        The main difference between this and the 'deploy' command is that this command overwrites files,
+        and warns the user before doing so.
 
 CONFIG
     Uses the TOML format (https://github.com/toml-lang/toml)
     SECTIONS
         [Server]
-        Version - String that contains the version of the server.jar to download
-                  Can be either a version, latest-release, or latest-snapshot
+        Version - String that contains the version of the server.jar to download.
+                Can be either a version, latest-release, or latest-snapshot
             EXAMPLE: Version = "1.17.1"
             DEFAULT: Version = "latest-release"
         JsonManifestUrl - String that contains the URL to the minecraft launcher manifest.
-                          DO NOT MESS WITH THIS IF YOU DON'T KNOW WHAT YOU'RE DOING
+                        DO NOT MESS WITH THIS IF YOU DON'T KNOW WHAT YOU'RE DOING
             EXAMPLE: JsonManifestUrl = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
             DEFAULT: JsonManifestUrl = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
        
@@ -126,6 +130,7 @@ CONFIG
 RETURN VALUE
     0 - Success
     1 - User error
-    2 - Download error
+    2 - Server error
+    3 - Hash mismatch
     Other - Java / Kotlin error, please submit bug report
 """

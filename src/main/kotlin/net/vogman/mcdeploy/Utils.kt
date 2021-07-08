@@ -5,7 +5,6 @@ import java.nio.charset.Charset
 import java.security.MessageDigest
 import kotlin.system.exitProcess
 
-
 fun writeEula() = File("./eula.txt").writeText("eula = true\n", Charsets.UTF_8)
 
 fun File.writeNewBytes(bytes: ByteArray) {
@@ -36,7 +35,7 @@ fun logOk(msg: String) {
     println("[${colorGreen}✓${colorReset}] $msg")
 }
 
-fun hash(bytes: ByteArray): String {
+fun sha1sum(bytes: ByteArray): String {
     val md = MessageDigest.getInstance("SHA-1")
     val digest = md.digest(bytes)
     val sb = StringBuilder()
@@ -44,13 +43,4 @@ fun hash(bytes: ByteArray): String {
         sb.append("%02x".format(byte))
     }
     return sb.toString()
-}
-
-fun assertHashesMatch(expected: String, actual: String) {
-    if (expected == actual) {
-        logOk("SHA-1 Match! Continuing")
-    } else {
-        logErr("SHA-1 Mismatch! Exiting")
-        exitProcess(2)
-    }
 }

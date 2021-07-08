@@ -4,6 +4,9 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import java.net.URI
+import java.net.URL
+import java.nio.file.Path
 
 data class EnvironmentConfig(
     val JavaArgs: List<String>,
@@ -13,14 +16,19 @@ data class EnvironmentConfig(
 
 data class ServerConfig(val JsonManifestUrl: String, val Version: String, val AgreeToEULA: Boolean)
 
-data class Datapack(val URL: String, val FileName: String, val Sha1Sum: String) {
+data class Datapack(val URL: URL, val FileName: String, val Sha1Sum: String) {
     suspend fun fetch(client: HttpClient): ByteArray {
         val responseData: HttpResponse = client.get(URL)
         return responseData.receive()
     }
 }
 
-data class Config(val Environment: EnvironmentConfig, val Server: ServerConfig, val Datapacks: List<Datapack>?, val Properties: Map<String, String>) {
+data class Config(
+    val Environment: EnvironmentConfig,
+    val Server: ServerConfig,
+    val Datapacks: List<Datapack>?,
+    val Properties: Map<String, String>
+) {
     fun genServerProperties(): String =
         Properties
             .map { "${it.key} = ${it.value}" }
