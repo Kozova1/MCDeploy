@@ -1,7 +1,7 @@
 <component name="ArtifactManager">
-  <artifact type="jar" build-on-make="true" name="MCDeploy.main:jar">
-    <output-path>$PROJECT_DIR$/out/artifacts/MCDeploy_main_jar</output-path>
-    <root id="archive" name="MCDeploy.main.jar">
+  <artifact type="jar" build-on-make="true" name="MCDeploy:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/MCDeploy_jar</output-path>
+    <root id="archive" name="MCDeploy.jar">
       <element id="directory" name="META-INF">
         <element id="file-copy" path="$PROJECT_DIR$/src/main/kotlin/META-INF/MANIFEST.MF" />
       </element>
