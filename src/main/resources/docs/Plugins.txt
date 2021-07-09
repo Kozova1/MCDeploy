@@ -1,0 +1,7 @@
+This section configures the plugins that will be added to the server.
+The plugins will be downloaded from the internet.
+It is *not* mandatory.
+
+Children:
+  Plugins.TargetDir
+  Plugins.Files

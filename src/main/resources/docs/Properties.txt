@@ -1,0 +1,6 @@
+This section will be copied into 'server.properties'
+All keys and values here must be quoted to prevent problems.
+It contains the configuration options, like this:
+    [Properties]
+    "white-list" = "true"
+    "rcon.port" = "25575"

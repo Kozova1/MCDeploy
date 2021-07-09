@@ -1,14 +1,7 @@
 package net.vogman.mcdeploy
 
-import com.sksamuel.hoplite.ConfigLoader
-import com.sksamuel.hoplite.PropertySource
-import com.sksamuel.hoplite.fp.getOrElse
-import com.sksamuel.hoplite.fp.onInvalid
-import com.sksamuel.hoplite.fp.onValid
-import io.ktor.client.*
 import java.io.File
 import kotlin.io.path.Path
-import kotlin.io.path.createDirectory
 
 object DeployServer : Command {
     override suspend fun run(args: Array<String>): Result<Unit, Error> {
@@ -17,29 +10,26 @@ object DeployServer : Command {
             return Result.Err(Error.User)
         }
 
-        val configFile = File("./mcdeploy.toml")
+
+        val configFile = File("mcdeploy.toml")
         if (!configFile.exists()) {
-            logErr("Config file ./mcdeploy.toml does not exist. Please create it.")
+            logErr("Config file 'mcdeploy.toml' does not exist. Please create it.")
             return Result.Err(Error.User)
         }
 
-        val configMaybeInvalid = ConfigLoader.Builder()
-            .addSource(PropertySource.file(configFile))
-            .addSource(PropertySource.string(DEFAULT_CONFIG, "toml"))
-            .build()
-            .loadConfig<Config>()
-        if (configMaybeInvalid.isInvalid()) {
-            configMaybeInvalid.onInvalid {
-                logErr(it.description())
-            }
-            configMaybeInvalid.onValid {
-                throw IllegalStateException("Got valid when isInvalid() true")
-            }
-            return Result.Err(Error.User)
+        val contentsExceptConfig = File("").listFiles { _, name -> name != "mcdeploy.toml" }
+        if (contentsExceptConfig != null && contentsExceptConfig.isNotEmpty()) {
+            logErr("Current directory contains files except for 'mcdeploy.toml'. Delete them and run again or use the 'update' subcommand instead")
         }
-        val config = configMaybeInvalid.getOrElse {
-            throw IllegalStateException("Got invalid after verification of validness")
+
+        val configResult = Config.loadConfig(configFile)
+        when (configResult) {
+            is Result.Err -> return configResult.map {}
+            is Result.Ok -> {
+            }
         }
+        val config = configResult.ok
+
 
         if (!config.Server.AgreeToEULA) {
             logErr("To host a Minecraft server, you must first agree to the EULA: https://account.mojang.com/documents/minecraft_eula")
@@ -48,58 +38,64 @@ object DeployServer : Command {
             return Result.Err(Error.User)
         }
 
-        val client = HttpClient()
-
         val serverJarResult = config.Server.JarSource.fetch(config)
         if (serverJarResult is Result.Err) {
             return serverJarResult.map { }
         }
         val serverJar = (serverJarResult as Result.Ok).ok
 
-        if (config.Datapacks != null) {
-            val numDatapacks = config.Datapacks.size
-            // make sure directory exists (but do NOT overwrite)
-            runCatching {
-                Path("world").createDirectory()
-                Path("world", "datapacks").createDirectory()
+        when (val ret = File("server.jar").writeNewBytes(serverJar)) {
+            is Result.Err -> return ret.map {}
+            is Result.Ok -> {
             }
-            println("Starting datapack downloads ($numDatapacks)...")
-            println()
-            config.Datapacks.forEachIndexed { idx, datapack ->
-                println("[${idx + 1}/$numDatapacks] Starting download from ${datapack.URL}")
-                val bytes = datapack.fetch(client)
-                logOk("Downloaded ${datapack.FileName}")
-
-                println("Verifying ${datapack.FileName}")
-                val hashed = sha1sum(bytes)
-                println("Downloaded: $hashed")
-                println("Configured: ${datapack.Sha1Sum}")
-                if (datapack.Sha1Sum == hashed) {
-                    logOk("SHA-1 Match! Continuing")
-                } else {
-                    logErr("SHA-1 Mismatch! Exiting")
-                    return Result.Err(Error.Hash)
-                }
-
-                logOk("SHA-1 Match! Continuing")
-                Path("world", "datapacks", datapack.FileName).toFile().writeNewBytes(bytes)
-                println("[${idx + 1}/$numDatapacks] Done.")
-                println()
-            }
-            logOk("Downloaded all datapacks")
         }
-
-        File("./server.jar").writeNewBytes(serverJar)
         logOk("Written server.jar")
 
-        writeEula()
-        logOk("Written EULA.txt")
+        when (val ret = File("eula.txt").writeNewText("eula = true\n", Charsets.UTF_8)) {
+            is Result.Err -> return ret.map {}
+            is Result.Ok -> {
+            }
+        }
+        logOk("Written eula.txt")
 
-        File("./run.sh").writeNewText(config.genRunScript(), Charsets.UTF_8)
+        when (val ret = File("run.sh").writeNewText(config.genRunScript(), Charsets.UTF_8)) {
+            is Result.Err -> return ret.map {}
+            is Result.Ok -> {
+            }
+        }
         logOk("Written run.sh")
 
-        File("./server.properties").writeNewText(config.genServerProperties(), Charsets.UTF_8)
+        when (val ret = File("server.properties").writeNewText(config.genServerProperties(), Charsets.UTF_8)) {
+            is Result.Err -> return ret.map {}
+            is Result.Ok -> {
+            }
+        }
         logOk("written server.properties")
+
+        if (config.Datapacks != null) {
+            println("Starting to fetch datapacks (${config.Datapacks.Files.size})")
+            val path = config.Datapacks.TargetDir ?: Path("world", "datapacks")
+
+            when (val ret = config.Datapacks.Files.fetchAll(path, overwrite = false)) {
+                is Result.Err -> return ret.map {}
+                is Result.Ok -> {
+                }
+            }
+            logOk("Finished fetching datapacks")
+        }
+
+        if (config.Plugins != null) {
+            println("Starting to fetch plugins (${config.Plugins.Files.size})")
+            val path = config.Plugins.TargetDir ?: Path("plugins")
+
+            when (val ret = config.Plugins.Files.fetchAll(path, overwrite = false)) {
+                is Result.Err -> return ret.map {}
+                is Result.Ok -> {
+                }
+            }
+
+            logOk("Finished fetching datapacks")
+        }
 
         logOk("Done! Please run the server now.")
         return Result.Ok(Unit)

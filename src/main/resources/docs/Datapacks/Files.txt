@@ -1,0 +1,8 @@
+Files
+Type: List<ExternalFile>
+
+List of datapacks to download.
+Each datapack *must* have these keys:
+URL - URL from which to download the datapack
+Sha1Sum - String of the SHA-1 sum of the datapack
+FileName - Filename under which the datapack will be download, relative to @Datapacks.TargetDir

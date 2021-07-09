@@ -7,6 +7,7 @@ sealed class Result<T, E> {
 
 enum class Error {
     User,
+    Filesystem,
     Server,
     Hash,
 }
@@ -19,6 +20,7 @@ fun <T> Result<T, Error>.toInt(): Int =
                 Error.User -> 1
                 Error.Server -> 2
                 Error.Hash -> 4
+                Error.Filesystem -> 8
             }
     }
 

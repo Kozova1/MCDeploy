@@ -1,0 +1,7 @@
+This section configures the datapacks that will be added to the server.
+The datapacks will be downloaded from the internet.
+It is *not* mandatory.
+
+Children:
+  Datapacks.TargetDir
+  Datapacks.Files

@@ -1,0 +1,5 @@
+TargetDir
+Type: Path
+
+Path to where the plugins should be downloaded to.
+By default it is "plugins".

@@ -1,0 +1,8 @@
+Files
+Type: List<ExternalFile>
+
+List of plugins to download.
+Each plugin *must* have these keys:
+URL - URL from which to download the plugin
+Sha1Sum - String of the SHA-1 sum of the plugin
+FileName - Filename under which the plugin will be download, relative to @Plugins.TargetDir

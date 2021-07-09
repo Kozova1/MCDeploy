@@ -1,15 +1,7 @@
 package net.vogman.mcdeploy
 
-import com.sksamuel.hoplite.ConfigLoader
-import com.sksamuel.hoplite.PropertySource
-import com.sksamuel.hoplite.fp.getOrElse
-import com.sksamuel.hoplite.fp.onInvalid
-import com.sksamuel.hoplite.fp.onValid
-import io.ktor.client.*
 import java.io.File
-import java.lang.IllegalStateException
 import kotlin.io.path.Path
-import kotlin.io.path.createDirectory
 
 object UpdateServer : Command {
     override suspend fun run(args: Array<String>): Result<Unit, Error> {
@@ -24,23 +16,13 @@ object UpdateServer : Command {
             return Result.Err(Error.User)
         }
 
-        val configMaybeInvalid = ConfigLoader.Builder()
-            .addSource(PropertySource.file(configFile))
-            .addSource(PropertySource.string(DEFAULT_CONFIG, "toml"))
-            .build()
-            .loadConfig<Config>()
-        if (configMaybeInvalid.isInvalid()) {
-            configMaybeInvalid.onInvalid {
-                logErr(it.description())
+        val configResult = Config.loadConfig(configFile)
+        when (configResult) {
+            is Result.Err -> return configResult.map {}
+            is Result.Ok -> {
             }
-            configMaybeInvalid.onValid {
-                throw IllegalStateException("Got valid when isInvalid() true")
-            }
-            return Result.Err(Error.User)
         }
-        val config = configMaybeInvalid.getOrElse {
-            throw IllegalStateException("Got invalid after verification of validness")
-        }
+        val config = configResult.ok
 
         if (!config.Server.AgreeToEULA) {
             logErr("To host a Minecraft server, you must first agree to the EULA: https://account.mojang.com/documents/minecraft_eula")
@@ -51,7 +33,7 @@ object UpdateServer : Command {
 
         println("About to start updating the server")
         println("WARNING: This *will* overwrite your datapacks, server.properties, run.sh, and server.jar files")
-        while(true) {
+        while (true) {
             print("Do you want to continue? [y/n] ")
             val response = readLine() ?: continue
             when (response) {
@@ -75,7 +57,7 @@ object UpdateServer : Command {
         File("./server.jar").writeBytes(serverJar)
         logOk("Written server.jar")
 
-        writeEula()
+        File("eula.txt").writeText("eula = true\n")
         logOk("Written EULA.txt")
 
         File("./run.sh").writeText(config.genRunScript(), Charsets.UTF_8)
@@ -85,38 +67,28 @@ object UpdateServer : Command {
         logOk("written server.properties")
 
         if (config.Datapacks != null) {
-            val numDatapacks = config.Datapacks.size
-            // make sure directory exists (but do NOT overwrite)
-            runCatching {
-                Path("world").createDirectory()
-                Path("world", "datapacks").createDirectory()
-            }
-            println("Starting datapack downloads ($numDatapacks)...")
-            println()
-            HttpClient().use { client ->
-                config.Datapacks.forEachIndexed { idx, datapack ->
-                    println("[${idx + 1}/$numDatapacks] Starting download from ${datapack.URL}")
-                    val bytes = datapack.fetch(client)
-                    logOk("Downloaded ${datapack.FileName}")
+            println("Starting to fetch datapacks (${config.Datapacks.Files.size})")
+            val path = config.Datapacks.TargetDir ?: Path("world", "datapacks")
 
-                    println("Verifying ${datapack.FileName}")
-                    val hashed = sha1sum(bytes)
-                    println("Downloaded: $hashed")
-                    println("Configured: ${datapack.Sha1Sum}")
-                    if (datapack.Sha1Sum == hashed) {
-                        logOk("SHA-1 Match! Continuing")
-                    } else {
-                        logErr("SHA-1 Mismatch! Exiting")
-                        return Result.Err(Error.Hash)
-                    }
-
-                    logOk("SHA-1 Match! Continuing")
-                    Path("world", "datapacks", datapack.FileName).toFile().writeBytes(bytes)
-                    println("[${idx + 1}/$numDatapacks] Done.")
-                    println()
+            when (val ret = config.Datapacks.Files.fetchAll(path, overwrite = true)) {
+                is Result.Err -> return ret.map {}
+                is Result.Ok -> {
                 }
             }
-            logOk("Downloaded all datapacks")
+            logOk("Finished fetching datapacks")
+        }
+
+        if (config.Plugins != null) {
+            println("Starting to fetch plugins (${config.Plugins.Files.size})")
+            val path = config.Plugins.TargetDir ?: Path("plugins")
+
+            when (val ret = config.Plugins.Files.fetchAll(path, overwrite = true)) {
+                is Result.Err -> return ret.map {}
+                is Result.Ok -> {
+                }
+            }
+
+            logOk("Finished fetching datapacks")
         }
 
         logOk("Done! Please run the server now.")

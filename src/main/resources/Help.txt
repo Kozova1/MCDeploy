@@ -1,0 +1,36 @@
+USAGE
+    java -jar MCDeploy.jar [help | deploy | update | describe CONFIG_PATHS... | new DIRECTORY]
+
+COMMANDS
+    help:
+        Display this screen.
+    new:
+        Create the template project in DIRECTORY. The directory must either not exist or be empty.
+    deploy:
+        Deploy the configuration specified in ./mcdeploy.toml
+    update:
+        Update the deployed server in the current directory according to the configuration in ./mcdeploy.toml
+        The main difference between this and the 'deploy' command is that this command overwrites files,
+        and warns the user before doing so.
+    describe:
+        Print help for each of CONFIG_PATHS passed. A Config Path is a dot (.) or slash (/) delimited string,
+        describing a specific section in the config file. For example,
+        to reference the [Server.JarSource] section you would use one of these Config Paths: 'Server.JarSource' 'Server/JarSource'
+
+CONFIG
+    To get info about the config, run this program with the following arguments:
+        MCDeploy describe Environment Properties Server Datapacks
+    If you are not sure about a config section / value, try to look it up using 'MCDeploy describe'.
+    The sections are:
+        [Server]
+        [Environment]
+        [Datapacks]
+        [Plugins]
+        [Properties]
+
+RETURN VALUE
+    0 - Success
+    1 - User error
+    2 - Server error
+    3 - Hash mismatch
+    Other - Java / Kotlin error, please submit bug report

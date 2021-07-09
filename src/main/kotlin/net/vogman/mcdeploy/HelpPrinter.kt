@@ -2,11 +2,7 @@ package net.vogman.mcdeploy
 
 object HelpPrinter : Command {
     override suspend fun run(args: Array<String>): Result<Unit, Error> {
-        if (args.isNotEmpty()) {
-            logErr("'help' subcommand accepts exactly zero arguments")
-            return Result.Err(Error.User)
-        }
-        println(HELP)
+        println(this.javaClass.getResource("/Help.txt"))
         return Result.Ok(Unit)
     }
 }
