@@ -38,5 +38,6 @@ RETURN VALUE
     0 - Success
     1 - User error
     2 - Server error
-    3 - Hash mismatch
+    4 - Hash mismatch
+    8 - Filesystem error
     Other - Java / Kotlin error, please submit bug report
