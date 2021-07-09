@@ -1,17 +1,23 @@
 USAGE
-    java -jar MCDeploy.jar [help | deploy | update | describe CONFIG_PATHS... | new DIRECTORY]
+    java -jar MCDeploy.jar SUBCOMMAND ARGUMENTS...
 
-COMMANDS
+SUBCOMMANDS
     help:
         Display this screen.
-    new:
+    version:
+        Prints the version of MCDeploy
+    new DIRECTORY:
         Create the template project in DIRECTORY. The directory must either not exist or be empty.
     deploy:
-        Deploy the configuration specified in ./mcdeploy.toml
+        Deploy the configuration specified in 'mcdeploy.toml'
     update:
-        Update the deployed server in the current directory according to the configuration in ./mcdeploy.toml
+        Update the deployed server in the current directory according to the configuration in 'mcdeploy.toml'
         The main difference between this and the 'deploy' command is that this command overwrites files,
         and warns the user before doing so.
+    write-systemd-service:
+        Writes a basic service file that can be ran by systemd. To use it, move it to $XDG_CONFIG_HOME/systemd/user/
+        It requires some modification before use, which is printed by the command.
+        If you do not use Linux with systemd, you do not have any reason to use this command.
     describe:
         Print help for each of CONFIG_PATHS passed. A Config Path is a dot (.) or slash (/) delimited string,
         describing a specific section in the config file. For example,

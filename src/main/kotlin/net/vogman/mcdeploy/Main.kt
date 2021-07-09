@@ -11,7 +11,9 @@ suspend fun main(args: Array<String>) {
         "new" -> NewTemplate
         "deploy" -> DeployServer
         "update" -> UpdateServer
+        "write-systemd-service" -> WriteService
         "help" -> HelpPrinter
+        "version" -> VersionPrinter
         "describe" -> ConfigHelper
         else -> ErrorOut("Unknown subcommand '${args.first()}'. For usage, run with the 'help' subcommand", Error.User)
     }

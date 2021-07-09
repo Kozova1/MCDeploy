@@ -1,0 +1,9 @@
+[Unit]
+Description=Minecraft Server
+After=network.target
+
+[Install]
+WantedBy = default.target
+
+[Service]
+Restart = always
