@@ -1,34 +1,32 @@
 package net.vogman.mcdeploy
 
+import arrow.core.Either
 import java.io.File
 import kotlin.io.path.Path
 
 object UpdateServer : Command {
-    override suspend fun run(args: Array<String>): Result<Unit, Error> {
+    override suspend fun run(args: Array<String>): Either<Error, Unit> {
         if (args.isNotEmpty()) {
             logErr("'update' subcommand accepts exactly zero arguments. Use the 'help' subcommand to see usage.")
-            return Result.Err(Error.User)
+            return Either.Left(Error.WrongArguments(0, args.size))
         }
 
         val configFile = File("./mcdeploy.toml")
         if (!configFile.exists()) {
             logErr("Config file ./mcdeploy.toml does not exist. Please create it.")
-            return Result.Err(Error.User)
+            return Either.Left(Error.MissingConfig)
         }
 
-        val configResult = Config.loadConfig(configFile)
-        when (configResult) {
-            is Result.Err -> return configResult.map {}
-            is Result.Ok -> {
-            }
+        val config = when (val res = Config.loadConfig(configFile)) {
+            is Either.Left -> return res.map {}
+            is Either.Right -> res.value
         }
-        val config = configResult.ok
 
         if (!config.Server.AgreeToEULA) {
             logErr("To host a Minecraft server, you must first agree to the EULA: https://account.mojang.com/documents/minecraft_eula")
             println("\tWhen you have read the EULA and agreed to it, please add the following line to mcdeploy.toml under the [Server] section")
             println("AgreeToEULA = true")
-            return Result.Err(Error.User)
+            return Either.Left(Error.NoEULA)
         }
 
         println("About to start updating the server")
@@ -38,32 +36,32 @@ object UpdateServer : Command {
             val response = readLine() ?: continue
             when (response) {
                 "y", "Y" -> {
-                    println("Starting server update...")
+                    logOk("Starting server update...")
                     break
                 }
                 "n", "N" -> {
-                    println("Server update cancelled. Exiting...")
-                    return Result.Ok(Unit)
+                    logOk("Server update cancelled. Exiting...")
+                    return Either.Right(Unit)
                 }
             }
         }
 
-        val serverJarResult = config.Server.JarSource.fetch(config)
-        if (serverJarResult is Result.Err) {
-            return serverJarResult.map { }
+        val serverJar = when (val res = config.Server.JarSource.fetch(config)) {
+            is Either.Left -> return res.map {  }
+            is Either.Right -> res.value
         }
-        val serverJar = (serverJarResult as Result.Ok).ok
+        logOk("Downloaded and verified server.jar")
 
-        File("./server.jar").writeBytes(serverJar)
+        File("server.jar").writeBytes(serverJar)
         logOk("Written server.jar")
 
         File("eula.txt").writeText("eula = true\n")
         logOk("Written EULA.txt")
 
-        File("./run.sh").writeText(config.genRunScript(), Charsets.UTF_8)
+        File("run.sh").writeText(config.genRunScript(), Charsets.UTF_8)
         logOk("Written run.sh")
 
-        File("./server.properties").writeText(config.genServerProperties(), Charsets.UTF_8)
+        File("server.properties").writeText(config.genServerProperties(), Charsets.UTF_8)
         logOk("written server.properties")
 
         if (config.Datapacks != null) {
@@ -71,11 +69,9 @@ object UpdateServer : Command {
             val path = config.Datapacks.TargetDir ?: Path("world", "datapacks")
 
             when (val ret = config.Datapacks.Files.fetchAll(path, overwrite = true)) {
-                is Result.Err -> return ret.map {}
-                is Result.Ok -> {
-                }
+                is Either.Left -> return ret.map {}
+                is Either.Right -> logOk("Finished fetching datapacks")
             }
-            logOk("Finished fetching datapacks")
         }
 
         if (config.Plugins != null) {
@@ -83,15 +79,13 @@ object UpdateServer : Command {
             val path = config.Plugins.TargetDir ?: Path("plugins")
 
             when (val ret = config.Plugins.Files.fetchAll(path, overwrite = true)) {
-                is Result.Err -> return ret.map {}
-                is Result.Ok -> {
-                }
+                is Either.Left -> return ret.map {}
+                is Either.Right -> logOk("Finished fetching plugins")
             }
 
-            logOk("Finished fetching datapacks")
         }
 
         logOk("Done! Please run the server now.")
-        return Result.Ok(Unit)
+        return Either.Right(Unit)
     }
 }

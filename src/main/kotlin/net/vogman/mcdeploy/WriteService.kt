@@ -1,10 +1,11 @@
 package net.vogman.mcdeploy
 
+import arrow.core.Either
 import java.io.File
 import kotlin.io.path.Path
 
 object WriteService : Command {
-    override suspend fun run(args: Array<String>): Result<Unit, Error> {
+    override suspend fun run(args: Array<String>): Either<Error, Unit> {
         println("Creating service file...")
         val systemdService = File("minecraft-server.service")
         val serviceContent = this.javaClass.getResource("/systemd-template.service")!!.readText(Charsets.UTF_8) + """
@@ -22,6 +23,6 @@ object WriteService : Command {
         println("Please change the Description in the service file to match your server,")
         println("As well as the 'mc-server' parts to some unique name. USE THE SAME NAME FOR ALL OF THEM!")
         logOk("Done.")
-        return Result.Ok(Unit)
+        return Either.Right(Unit)
     }
 }

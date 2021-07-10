@@ -1,29 +1,41 @@
 package net.vogman.mcdeploy
 
+import arrow.core.Either
+import arrow.core.flatMap
+import arrow.core.flatten
 import io.ktor.client.*
+import io.ktor.client.features.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import me.tongfei.progressbar.ProgressBar
+import me.tongfei.progressbar.ProgressBarBuilder
+import me.tongfei.progressbar.ProgressBarStyle
 import java.io.File
+import java.net.URL
 import java.nio.charset.Charset
 import java.nio.file.Path
 import java.security.MessageDigest
+import java.time.temporal.ChronoUnit
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
-fun File.writeNewBytes(bytes: ByteArray): Result<Unit, Error> {
+fun File.writeNewBytes(bytes: ByteArray): Either<Error, Unit> {
     if (exists()) {
-        logErr("File $this already exists.")
-        return Result.Err(Error.Filesystem)
+        return Either.Left(Error.AlreadyExists(toPath()))
     }
     writeBytes(bytes)
-    return Result.Ok(Unit)
+    return Either.Right(Unit)
 }
 
-fun File.writeNewText(text: String, charset: Charset): Result<Unit, Error> {
+fun File.writeNewText(text: String, charset: Charset): Either<Error, Unit> {
     if (exists()) {
-        logErr("File $this already exists.")
-        return Result.Err(Error.Filesystem)
+        return Either.Left(Error.AlreadyExists(toPath()))
     }
     writeText(text, charset)
-    return Result.Ok(Unit)
+    return Either.Right(Unit)
 }
 
 fun logErr(msg: String) {
@@ -48,51 +60,88 @@ fun sha1sum(bytes: ByteArray): String {
     return sb.toString()
 }
 
-suspend fun List<ExternalFile>.fetchAll(targetDir: Path, overwrite: Boolean = false): Result<Unit, Error> =
-    HttpClient().use { client ->
-        if (targetDir.exists() && overwrite) {
-            logErr("Directory $targetDir")
-            return Result.Err(Error.Filesystem)
-        }
-        if (isNotEmpty()) {
-            val ret = runCatching {
-                targetDir.createDirectories()
-            }
-            if (ret.isFailure) {
-                logErr("Failed to create directory $targetDir: ${ret.exceptionOrNull()?.localizedMessage}")
-                return Result.Err(Error.User)
-            }
-            forEachIndexed { index, file ->
-                println("[${index + 1}/$size] Starting download of ${targetDir.resolve(file.FileName)} from ${file.URL}")
-                val bytes = when (val fRet = file.fetch(client)) {
-                    is Result.Err -> return fRet.map {}
-                    is Result.Ok -> fRet.ok
-                }
-                logOk("Downloaded ${file.FileName}")
+suspend fun <A, B> Iterable<A>.parMap(f: suspend (A) -> B): List<B> = coroutineScope {
+    map { async { f(it) } }.awaitAll()
+}
 
-                println("Verifying ${file.FileName}")
-                val hashed = sha1sum(bytes)
-                println("Downloaded: $hashed")
-                println("Configured: ${file.Sha1Sum}")
-                if (file.Sha1Sum == hashed) {
-                    logOk("SHA-1 Match! Continuing")
-                } else {
-                    logErr("SHA-1 Mismatch! Exiting")
-                    return Result.Err(Error.Hash)
-                }
-                logOk("SHA-1 Match! Continuing")
-                if (overwrite) {
-                    targetDir.resolve(file.FileName).toFile().writeBytes(bytes)
-                } else {
-                    when (val retFile = targetDir.resolve(file.FileName).toFile().writeNewBytes(bytes)) {
-                        is Result.Err -> return retFile.map { }
-                        is Result.Ok -> {
-                        }
+suspend fun List<ExternalFile>.fetchAll(targetDir: Path, overwrite: Boolean = false): Either<Error, Unit> {
+    if (targetDir.exists() && !overwrite) {
+        return Either.Left(Error.AlreadyExists(targetDir))
+    }
+    if (isNotEmpty()) {
+        val ret = runCatching {
+            targetDir.createDirectories()
+        }
+        if (ret.isFailure) {
+            return Either.Left(Error.FilesystemError(ret.exceptionOrNull()!!.localizedMessage))
+        }
+
+        val progressBars: List<ProgressBar> = this.map {
+            ProgressBarBuilder()
+                .setStyle(ProgressBarStyle.ASCII)
+                .setInitialMax(0)
+                .setUnit("KiB", 1)
+                .setSpeedUnit(ChronoUnit.SECONDS)
+                .showSpeed()
+                .setTaskName(it.FileName)
+                .build()
+        }
+
+        val resultList: List<Either<Error, Unit>> =
+            this.zip(progressBars).parMap { (it, progressBar) ->
+                Either.catch {
+                    HttpClient().use { client ->
+                        it.fetchWrite(client, targetDir, progressBar)
                     }
-                }
-                println("[${index + 1}/$size] Done.")
-                println()
+                }.mapLeft {
+                    val status = (it as ClientRequestException).response.status
+                    Error.RequestFailed("${status.value} (${status.description})")
+                }.flatten()
+            }
+
+        return resultList.fold(Either.Right(Unit) as Either<Error, Unit>) { folded, toFold ->
+            when (folded) {
+                is Either.Left -> folded
+                is Either.Right -> toFold.map { }
             }
         }
-        return Result.Ok(Unit)
     }
+    return Either.Right(Unit)
+}
+
+
+suspend fun HttpClient.downloadWithProgressBar(url: String, progressBarName: String): HttpResponse {
+    return ProgressBarBuilder()
+        .setStyle(ProgressBarStyle.ASCII)
+        .setInitialMax(0)
+        .setUnit("KiB", 1)
+        .setSpeedUnit(ChronoUnit.SECONDS)
+        .showSpeed()
+        .setTaskName(progressBarName)
+        .build().use { pbar ->
+            get(url) {
+                onDownload { bytesSentTotal, contentLength ->
+                    pbar.maxHint(contentLength / 1024)
+                    pbar.stepTo(bytesSentTotal / 1024)
+                }
+            }
+        }
+}
+
+
+suspend fun HttpClient.downloadWithProgressBar(url: URL, progressBarName: String): HttpResponse =
+    ProgressBarBuilder()
+        .setStyle(ProgressBarStyle.ASCII)
+        .setInitialMax(0)
+        .setUnit("KiB", 1)
+        .setSpeedUnit(ChronoUnit.SECONDS)
+        .showSpeed()
+        .setTaskName(progressBarName)
+        .build().use { pbar ->
+            get(url) {
+                onDownload { bytesSentTotal, contentLength ->
+                    pbar.maxHint(contentLength / 1024)
+                    pbar.stepTo(bytesSentTotal / 1024)
+                }
+            }
+        }

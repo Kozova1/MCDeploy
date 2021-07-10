@@ -1,87 +1,72 @@
 package net.vogman.mcdeploy
 
+import arrow.core.Either
 import java.io.File
 import kotlin.io.path.Path
+import kotlin.io.path.exists
+import kotlin.io.path.listDirectoryEntries
 
 object DeployServer : Command {
-    override suspend fun run(args: Array<String>): Result<Unit, Error> {
+    override suspend fun run(args: Array<String>): Either<Error, Unit> {
         if (args.isNotEmpty()) {
             logErr("'deploy' subcommand accepts exactly zero arguments. Use the 'help' subcommand to see usage.")
-            return Result.Err(Error.User)
+            return Either.Left(Error.WrongArguments(0, args.size))
         }
 
 
         val configFile = File("mcdeploy.toml")
         if (!configFile.exists()) {
             logErr("Config file 'mcdeploy.toml' does not exist. Please create it.")
-            return Result.Err(Error.User)
+            return Either.Left(Error.MissingConfig)
         }
 
-        val contentsExceptConfig = File("").listFiles { _, name -> name != "mcdeploy.toml" }
-        if (contentsExceptConfig != null && contentsExceptConfig.isNotEmpty()) {
-            logErr("Current directory contains files except for 'mcdeploy.toml'. Delete them and run again or use the 'update' subcommand instead")
+        val config = when (val res = Config.loadConfig(configFile)) {
+            is Either.Left -> return res.map {}
+            is Either.Right -> res.value
         }
-
-        val configResult = Config.loadConfig(configFile)
-        when (configResult) {
-            is Result.Err -> return configResult.map {}
-            is Result.Ok -> {
-            }
-        }
-        val config = configResult.ok
-
 
         if (!config.Server.AgreeToEULA) {
-            logErr("To host a Minecraft server, you must first agree to the EULA: https://account.mojang.com/documents/minecraft_eula")
-            println("\tWhen you have read the EULA and agreed to it, please add the following line to mcdeploy.toml under the [Server] section")
-            println("AgreeToEULA = true")
-            return Result.Err(Error.User)
+            return Either.Left(Error.NoEULA)
         }
 
-        val serverJarResult = config.Server.JarSource.fetch(config)
-        if (serverJarResult is Result.Err) {
-            return serverJarResult.map { }
+        val serverJarFile = Path("server.jar")
+        if (serverJarFile.exists()) {
+            return Either.Left(Error.AlreadyExists(serverJarFile))
         }
-        val serverJar = (serverJarResult as Result.Ok).ok
 
-        when (val ret = File("server.jar").writeNewBytes(serverJar)) {
-            is Result.Err -> return ret.map {}
-            is Result.Ok -> {
-            }
+        val serverJar = when (val res = config.Server.JarSource.fetch(config)) {
+            is Either.Left -> return res.map {  }
+            is Either.Right -> res.value
         }
-        logOk("Written server.jar")
+
+        when (val ret = serverJarFile.toFile().writeNewBytes(serverJar)) {
+            is Either.Left -> return ret.map {}
+            is Either.Right -> logOk("Written server.jar")
+        }
 
         when (val ret = File("eula.txt").writeNewText("eula = true\n", Charsets.UTF_8)) {
-            is Result.Err -> return ret.map {}
-            is Result.Ok -> {
-            }
+            is Either.Left -> return ret.map {}
+            is Either.Right -> logOk("Written eula.txt")
         }
-        logOk("Written eula.txt")
 
         when (val ret = File("run.sh").writeNewText(config.genRunScript(), Charsets.UTF_8)) {
-            is Result.Err -> return ret.map {}
-            is Result.Ok -> {
-            }
+            is Either.Left -> return ret.map {}
+            is Either.Right -> logOk("Written run.sh")
         }
-        logOk("Written run.sh")
 
         when (val ret = File("server.properties").writeNewText(config.genServerProperties(), Charsets.UTF_8)) {
-            is Result.Err -> return ret.map {}
-            is Result.Ok -> {
-            }
+            is Either.Left -> return ret.map {}
+            is Either.Right -> logOk("written server.properties")
         }
-        logOk("written server.properties")
 
         if (config.Datapacks != null) {
             println("Starting to fetch datapacks (${config.Datapacks.Files.size})")
             val path = config.Datapacks.TargetDir ?: Path("world", "datapacks")
 
             when (val ret = config.Datapacks.Files.fetchAll(path, overwrite = false)) {
-                is Result.Err -> return ret.map {}
-                is Result.Ok -> {
-                }
+                is Either.Left -> return ret.map {}
+                is Either.Right -> logOk("Finished fetching datapacks")
             }
-            logOk("Finished fetching datapacks")
         }
 
         if (config.Plugins != null) {
@@ -89,15 +74,12 @@ object DeployServer : Command {
             val path = config.Plugins.TargetDir ?: Path("plugins")
 
             when (val ret = config.Plugins.Files.fetchAll(path, overwrite = false)) {
-                is Result.Err -> return ret.map {}
-                is Result.Ok -> {
-                }
+                is Either.Left -> return ret.map {}
+                is Either.Right -> logOk("Finished fetching plugins")
             }
-
-            logOk("Finished fetching datapacks")
         }
 
         logOk("Done! Please run the server now.")
-        return Result.Ok(Unit)
+        return Either.Right(Unit)
     }
 }
