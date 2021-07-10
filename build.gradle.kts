@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "net.vogman"
-version = "3.2"
+version = "4.0"
 
 repositories {
     mavenCentral()
