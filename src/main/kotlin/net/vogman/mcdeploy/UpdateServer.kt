@@ -36,7 +36,7 @@ object UpdateServer : Command {
             val response = readLine() ?: continue
             when (response) {
                 "y", "Y" -> {
-                    logOk("Starting server update...")
+                    logOk("Updating server...")
                     break
                 }
                 "n", "N" -> {

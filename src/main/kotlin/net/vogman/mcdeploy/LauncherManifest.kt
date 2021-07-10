@@ -4,14 +4,9 @@ import arrow.core.Either
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.features.*
-import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import me.tongfei.progressbar.ProgressBarBuilder
-import me.tongfei.progressbar.ProgressBarStyle
-import java.net.URL
-import java.time.temporal.ChronoUnit
 import kotlin.io.path.Path
 
 suspend fun ServerJarFetcher.LauncherManifest.fetchImpl(config: Config): Either<Error, ByteArray> =
@@ -19,7 +14,8 @@ suspend fun ServerJarFetcher.LauncherManifest.fetchImpl(config: Config): Either<
         HttpClient().use { client ->
             assert(config.Server.JarSource is ServerJarFetcher.LauncherManifest)
             println("Downloading launcher manifest...")
-            val versionResponse: HttpResponse = client.downloadWithProgressBar(LauncherManifestURL, "Launcher Manifest")
+            val versionResponse: HttpResponse =
+                client.downloadWithProgressBar(LauncherManifestURL, "Launcher Manifest", "KiB", 1024)
 
             val versions: Versions = Json { ignoreUnknownKeys = true }.decodeFromString(versionResponse.receive())
             val versionUrl = versions.findURI(
@@ -36,7 +32,8 @@ suspend fun ServerJarFetcher.LauncherManifest.fetchImpl(config: Config): Either<
 
 
             println("Downloading manifest for selected version...")
-            val responseManifest: HttpResponse = client.downloadWithProgressBar(versionUrl, "Version Manifest")
+            val responseManifest: HttpResponse =
+                client.downloadWithProgressBar(versionUrl, "Version Manifest", "KiB", 1024)
             val manifest: VersionManifest =
                 Json { ignoreUnknownKeys = true }.decodeFromString(responseManifest.receive())
             logOk("Received manifest for version $Version")
@@ -47,7 +44,8 @@ suspend fun ServerJarFetcher.LauncherManifest.fetchImpl(config: Config): Either<
 
             // Download server.jar for the selected version
             println("Downloading server.jar...")
-            val serverResponse: HttpResponse = client.downloadWithProgressBar(manifest.downloads.server.url, "server.jar")
+            val serverResponse: HttpResponse =
+                client.downloadWithProgressBar(manifest.downloads.server.url, "server.jar", "MiB", 1024 * 1024)
             val serverJar: ByteArray = serverResponse.receive()
             logOk("Downloaded server.jar")
             println("Verifying server.jar...")

@@ -34,6 +34,8 @@ object DeployServer : Command {
             return Either.Left(Error.AlreadyExists(serverJarFile))
         }
 
+        println("Deploying server...")
+
         val serverJar = when (val res = config.Server.JarSource.fetch(config)) {
             is Either.Left -> return res.map {  }
             is Either.Right -> res.value

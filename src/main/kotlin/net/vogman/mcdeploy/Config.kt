@@ -51,7 +51,7 @@ data class ServerConfig(
 )
 
 data class ExternalFile(val URL: URL, val FileName: String, val Sha1Sum: String) {
-    suspend fun fetchWrite(client: HttpClient, targetPath: Path, progressBar: ProgressBar): Either<Error, Unit> {
+    suspend fun fetchWrite(targetPath: Path, progressBar: ProgressBar): Either<Error, Unit> = progressBar.use { pbar ->
         val file = targetPath.resolve(FileName)
         when (val cnfRes = Either.catch { file.createFile() }.mapLeft {
             Error.FilesystemError(it.localizedMessage)
@@ -63,8 +63,8 @@ data class ExternalFile(val URL: URL, val FileName: String, val Sha1Sum: String)
             HttpClient().use { client ->
                 val res: HttpResponse = client.get(URL) {
                     onDownload { bytesSentTotal, contentLength ->
-                        progressBar.maxHint(contentLength / 1024)
-                        progressBar.stepTo(bytesSentTotal / 1024)
+                        pbar.maxHint(contentLength)
+                        pbar.stepTo(bytesSentTotal)
                     }
                 }
                 res.receive()

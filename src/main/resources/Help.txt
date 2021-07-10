@@ -36,8 +36,5 @@ CONFIG
 
 RETURN VALUE
     0 - Success
-    1 - User error
-    2 - Server error
-    4 - Hash mismatch
-    8 - Filesystem error
+    1 - Error encountered
     Other - Java / Kotlin error, please submit bug report

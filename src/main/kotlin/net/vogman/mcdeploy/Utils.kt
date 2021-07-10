@@ -1,8 +1,6 @@
 package net.vogman.mcdeploy
 
 import arrow.core.Either
-import arrow.core.flatMap
-import arrow.core.flatten
 import io.ktor.client.*
 import io.ktor.client.features.*
 import io.ktor.client.request.*
@@ -39,15 +37,17 @@ fun File.writeNewText(text: String, charset: Charset): Either<Error, Unit> {
 }
 
 fun logErr(msg: String) {
-    val colorReset = "\u001B[0m"
+    val reset = "\u001B[0m"
+    val bold = "\u001B[1m"
     val colorRed = "\u001B[31m"
-    println("[${colorRed}X${colorReset}] $msg")
+    System.err.println("[${colorRed}${bold}X${reset}]${colorRed} $msg${reset}")
 }
 
 fun logOk(msg: String) {
-    val colorReset = "\u001B[0m"
+    val reset = "\u001B[0m"
+    val bold = "\u001B[1m"
     val colorGreen = "\u001B[32m"
-    println("[${colorGreen}✓${colorReset}] $msg")
+    println("[${colorGreen}${bold}✓${reset}]${colorGreen} $msg${reset}")
 }
 
 fun sha1sum(bytes: ByteArray): String {
@@ -80,7 +80,7 @@ suspend fun List<ExternalFile>.fetchAll(targetDir: Path, overwrite: Boolean = fa
             ProgressBarBuilder()
                 .setStyle(ProgressBarStyle.ASCII)
                 .setInitialMax(0)
-                .setUnit("KiB", 1)
+                .setUnit("KiB", 1024)
                 .setSpeedUnit(ChronoUnit.SECONDS)
                 .showSpeed()
                 .setTaskName(it.FileName)
@@ -89,14 +89,7 @@ suspend fun List<ExternalFile>.fetchAll(targetDir: Path, overwrite: Boolean = fa
 
         val resultList: List<Either<Error, Unit>> =
             this.zip(progressBars).parMap { (it, progressBar) ->
-                Either.catch {
-                    HttpClient().use { client ->
-                        it.fetchWrite(client, targetDir, progressBar)
-                    }
-                }.mapLeft {
-                    val status = (it as ClientRequestException).response.status
-                    Error.RequestFailed("${status.value} (${status.description})")
-                }.flatten()
+                it.fetchWrite(targetDir, progressBar)
             }
 
         return resultList.fold(Either.Right(Unit) as Either<Error, Unit>) { folded, toFold ->
@@ -110,38 +103,38 @@ suspend fun List<ExternalFile>.fetchAll(targetDir: Path, overwrite: Boolean = fa
 }
 
 
-suspend fun HttpClient.downloadWithProgressBar(url: String, progressBarName: String): HttpResponse {
+suspend fun HttpClient.downloadWithProgressBar(url: String, progressBarName: String, unitName: String, unitSize: Long): HttpResponse {
     return ProgressBarBuilder()
         .setStyle(ProgressBarStyle.ASCII)
         .setInitialMax(0)
-        .setUnit("KiB", 1)
+        .setUnit(unitName, unitSize)
         .setSpeedUnit(ChronoUnit.SECONDS)
         .showSpeed()
         .setTaskName(progressBarName)
         .build().use { pbar ->
             get(url) {
                 onDownload { bytesSentTotal, contentLength ->
-                    pbar.maxHint(contentLength / 1024)
-                    pbar.stepTo(bytesSentTotal / 1024)
+                    pbar.maxHint(contentLength)
+                    pbar.stepTo(bytesSentTotal)
                 }
             }
         }
 }
 
 
-suspend fun HttpClient.downloadWithProgressBar(url: URL, progressBarName: String): HttpResponse =
+suspend fun HttpClient.downloadWithProgressBar(url: URL, progressBarName: String, unitName: String, unitSize: Long): HttpResponse =
     ProgressBarBuilder()
         .setStyle(ProgressBarStyle.ASCII)
         .setInitialMax(0)
-        .setUnit("KiB", 1)
+        .setUnit(unitName, unitSize)
         .setSpeedUnit(ChronoUnit.SECONDS)
         .showSpeed()
         .setTaskName(progressBarName)
         .build().use { pbar ->
             get(url) {
                 onDownload { bytesSentTotal, contentLength ->
-                    pbar.maxHint(contentLength / 1024)
-                    pbar.stepTo(bytesSentTotal / 1024)
+                    pbar.maxHint(contentLength)
+                    pbar.stepTo(bytesSentTotal)
                 }
             }
         }
