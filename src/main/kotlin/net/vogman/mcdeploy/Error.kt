@@ -7,6 +7,7 @@ import java.nio.file.Path
 sealed class Error {
     object MissingConfig : Error()
     object NoEULA : Error()
+    data class Combined(val errors: Collection<Error>) : Error()
     data class TemplateNotEmpty(val target: Path) : Error()
     data class AlreadyExists(val file: Path) : Error()
     data class WrongArguments(val expected: Int, val received: Int) : Error()

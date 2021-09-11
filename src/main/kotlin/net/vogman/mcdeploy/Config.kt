@@ -1,6 +1,7 @@
 package net.vogman.mcdeploy
 
 import arrow.core.Either
+import arrow.core.Validated
 import com.sksamuel.hoplite.ConfigFailure
 import com.sksamuel.hoplite.ConfigLoader
 import com.sksamuel.hoplite.PropertySource
@@ -51,15 +52,15 @@ data class ServerConfig(
 )
 
 data class ExternalFile(val URL: URL, val FileName: String, val Sha1Sum: String) {
-    suspend fun fetchWrite(targetPath: Path, progressBar: ProgressBar): Either<Error, Unit> = progressBar.use { pbar ->
+    suspend fun fetchWrite(targetPath: Path, progressBar: ProgressBar): Validated<Error, Unit> = progressBar.use { pbar ->
         val file = targetPath.resolve(FileName)
-        when (val cnfRes = Either.catch { file.createFile() }.mapLeft {
+        when (val cnfRes = Validated.catch { file.createFile() }.mapLeft {
             Error.FilesystemError(it.localizedMessage)
         }) {
-            is Either.Left -> return cnfRes.map { }
+            is Validated.Invalid -> return cnfRes.map { }
         }
 
-        val bytes: ByteArray = when (val ret: Either<Error, ByteArray> = Either.catch<ByteArray> {
+        val bytes: ByteArray = when (val ret: Validated<Error, ByteArray> = Validated.catch<ByteArray> {
             HttpClient().use { client ->
                 val res: HttpResponse = client.get(URL) {
                     onDownload { bytesSentTotal, contentLength ->
@@ -73,19 +74,19 @@ data class ExternalFile(val URL: URL, val FileName: String, val Sha1Sum: String)
             val exnStatus = (it as ClientRequestException).response.status
             Error.RequestFailed("${exnStatus.value} (${exnStatus.description})")
         }) {
-            is Either.Left -> return ret.map { }
-            is Either.Right -> ret.value
+            is Validated.Invalid -> return ret.map { }
+            is Validated.Valid -> ret.value
         }
         val hashActual = sha1sum(bytes)
         if (hashActual != Sha1Sum) {
-            return Either.Left(Error.HashMismatch(file, Sha1Sum, hashActual))
+            return Validated.Invalid(Error.HashMismatch(file, Sha1Sum, hashActual))
         }
 
         Either.catch { file.writeBytes(bytes) }.mapLeft {
             Error.FilesystemError(it.localizedMessage)
         }
 
-        return Either.Right(Unit)
+        return Validated.Valid(Unit)
     }
 }
 

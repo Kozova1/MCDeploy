@@ -1,6 +1,8 @@
 package net.vogman.mcdeploy
 
-import arrow.core.Either
+import arrow.core.*
+import arrow.typeclasses.Semigroup
+import com.sksamuel.hoplite.fp.nel
 import io.ktor.client.*
 import io.ktor.client.features.*
 import io.ktor.client.request.*
@@ -64,6 +66,11 @@ suspend fun <A, B> Iterable<A>.parMap(f: suspend (A) -> B): List<B> = coroutineS
     map { async { f(it) } }.awaitAll()
 }
 
+suspend fun <A, B> Nel<A>.parMap(f: suspend (A) -> B): List<B> = coroutineScope {
+    map { async { f(it) } }.awaitAll()
+}
+
+
 suspend fun List<ExternalFile>.fetchAll(targetDir: Path, overwrite: Boolean = false): Either<Error, Unit> {
     if (targetDir.exists() && !overwrite) {
         return Either.Left(Error.AlreadyExists(targetDir))
@@ -87,17 +94,15 @@ suspend fun List<ExternalFile>.fetchAll(targetDir: Path, overwrite: Boolean = fa
                 .build()
         }
 
-        val resultList: List<Either<Error, Unit>> =
-            this.zip(progressBars).parMap { (it, progressBar) ->
-                it.fetchWrite(targetDir, progressBar)
-            }
+        val results = this.zip(progressBars).parMap { (it, progressBar) ->
+            it.fetchWrite(targetDir, progressBar)
+        }.separateValidated()
 
-        return resultList.fold(Either.Right(Unit) as Either<Error, Unit>) { folded, toFold ->
-            when (folded) {
-                is Either.Left -> folded
-                is Either.Right -> toFold.map { }
-            }
-        }
+        return if (results.first.isEmpty()) {
+            Validated.Valid(Unit)
+        } else {
+            Validated.Invalid(Error.Combined(results.first))
+        }.toEither()
     }
     return Either.Right(Unit)
 }
